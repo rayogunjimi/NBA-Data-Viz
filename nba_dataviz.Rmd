@@ -1,0 +1,119 @@
+---
+title: "NBA Data Visualization"
+author: "Claude Baluh, Ray Ogunjimi"
+date: "3/15/2022"
+output: html_document
+---
+
+Link to original project:
+#http://datasets.flowingdata.com/ppg2008.csv
+#https://data.world/breanngeneria/nba-project/workspace/file?filename=NBA_player_stats.xlsx
+https://towardsdatascience.com/10-unique-visualizations-of-the-nba-b981cfdb78bf
+https://www.kaggle.com/justinas/nba-players-data
+
+```{r}
+install.packages("ggrepel")
+library(tidyverse)
+library(dplyr)
+
+nba_data <- read.csv("all_seasons.csv")
+nba_data
+```
+
+```{r}
+lbs_to_kg_mult = 2.2046
+cm_to_inches_mult = 0.393701
+
+nba_data <- nba_data %>%
+    mutate(bigness = ((player_height)/mean(player_height))*
+        ((player_weight)/mean(player_weight)))
+nba_data
+
+name_and_bigness <- nba_data %>%
+    group_by(player_name) %>%
+    summarise(player_name, player_height = player_height*cm_to_inches_mult, player_weight = player_weight*lbs_to_kg_mult, bigness)
+
+smallest <- aggregate(cbind(bigness, player_height, player_weight) ~ 
+                          player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
+    arrange(bigness) %>% 
+    head(12)
+smallest
+
+biggest <- aggregate(cbind(bigness, player_height, player_weight) ~ 
+                          player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
+    arrange(bigness) %>% 
+    tail(12)
+biggest
+
+biggest %>%
+    ggplot() +
+    aes(x = player_weight, y = player_height) +
+    geom_point(size = (biggest$bigness*1)**5, alpha = 0.1) +
+    geom_text(
+    label=biggest$player_name,
+    check_overlap = TRUE)+
+    xlab("Player Weight (lbs)")+
+    ylab("Player Height (in)")+
+    ggtitle("Biggest Players in the NBA")+
+    theme(plot.title = element_text(hjust = 0.5))
+
+smallest %>%
+    ggplot() +
+    aes(x = player_weight, y = player_height) +
+    geom_point(size = (smallest$bigness*2.75)**5, alpha = 0.1) +
+    geom_text(
+    label=smallest$player_name,
+    check_overlap = TRUE)+
+    xlab("Player Weight (lbs)")+
+    ylab("Player Height (in)")+
+    ggtitle("Smallest Players in the NBA")+
+    theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+
+```{r}
+library(ggrepel)
+
+nba_data <- nba_data %>%
+    mutate(rebounds = ((oreb_pct+0.00001)/mean(oreb_pct))*
+        ((dreb_pct+0.00001)/mean(dreb_pct)))
+nba_data
+
+name_and_rebs <- nba_data %>%
+    group_by(player_name) %>%
+    summarise(player_name, oreb_pct = oreb_pct, dreb_pct = dreb_pct, rebounds)
+
+worst_reb <- aggregate(cbind(rebounds, oreb_pct, dreb_pct) ~ 
+                          player_name, data = name_and_rebs, FUN = mean, na.rm = TRUE) %>%
+    arrange(rebounds) %>% 
+    head(10)
+worst_reb
+
+best_reb <- aggregate(cbind(rebounds, oreb_pct, dreb_pct) ~ 
+                          player_name, data = name_and_rebs, FUN = mean, na.rm = TRUE) %>%
+    arrange(rebounds) %>% 
+    tail(15)
+best_reb
+
+best_reb %>%
+    ggplot() +
+    aes(x = dreb_pct, y = oreb_pct) +
+    geom_point() +
+    geom_text_repel(aes(label = best_reb$player_name), force = 50)+
+    xlab("Average Defensive Rebounds Percentage")+
+    ylab("Average Offensive Rebounds Percentage")+
+    ggtitle("Best Rebounders in the NBA")+
+    theme(plot.title = element_text(hjust = 0.5))
+
+worst_reb %>%
+    ggplot() +
+    aes(x = dreb_pct, y = oreb_pct) +
+    geom_point() +
+    geom_text_repel(aes(label = worst_reb$player_name), force = 25, max.overlaps=100)+
+    xlab("Average Defensive Rebounds Percentage")+
+    ylab("Average Offensive Rebounds Percentage")+
+    ggtitle("Worst Rebounders in the NBA")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
