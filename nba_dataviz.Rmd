@@ -6,18 +6,22 @@ output: html_document
 ---
 
 Link to original project:
-#http://datasets.flowingdata.com/ppg2008.csv
-#https://data.world/breanngeneria/nba-project/workspace/file?filename=NBA_player_stats.xlsx
 https://towardsdatascience.com/10-unique-visualizations-of-the-nba-b981cfdb78bf
 https://www.kaggle.com/justinas/nba-players-data
+
+Other links:
+#http://datasets.flowingdata.com/ppg2008.csv
+#https://data.world/breanngeneria/nba-project/workspace/file?filename=NBA_player_stats.xlsx
 
 ```{r}
 install.packages("ggrepel")
 library(tidyverse)
 library(dplyr)
+library(ggrepel)
 
 nba_data <- read.csv("all_seasons.csv")
-nba_data
+summary(nba_data)
+head(nba_data)
 ```
 
 ```{r}
@@ -27,23 +31,18 @@ cm_to_inches_mult = 0.393701
 nba_data <- nba_data %>%
     mutate(bigness = ((player_height)/mean(player_height))*
         ((player_weight)/mean(player_weight)))
-nba_data
 
 name_and_bigness <- nba_data %>%
     group_by(player_name) %>%
     summarise(player_name, player_height = player_height*cm_to_inches_mult, player_weight = player_weight*lbs_to_kg_mult, bigness)
 
-smallest <- aggregate(cbind(bigness, player_height, player_weight) ~ 
-                          player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
-    arrange(bigness) %>% 
-    head(12)
-smallest
-
-biggest <- aggregate(cbind(bigness, player_height, player_weight) ~ 
-                          player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
+biggest <- aggregate(cbind(bigness, player_height, player_weight) ~ player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
     arrange(bigness) %>% 
     tail(12)
-biggest
+    
+smallest <- aggregate(cbind(bigness, player_height, player_weight) ~ player_name, data = name_and_bigness, FUN = mean, na.rm = TRUE) %>%
+    arrange(bigness) %>% 
+    head(12)
 
 biggest %>%
     ggplot() +
@@ -54,66 +53,58 @@ biggest %>%
     check_overlap = TRUE)+
     xlab("Player Weight (lbs)")+
     ylab("Player Height (in)")+
-    ggtitle("Biggest Players in the NBA")+
-    theme(plot.title = element_text(hjust = 0.5))
+    ggtitle("NBA's Biggest Players")+
+    theme(panel.background = element_rect(fill = "white", color = "white")) +
+    theme(panel.border = element_rect(color = "grey",fill = NA,size = .5)) +
+    theme(panel.grid = element_line(color = "grey",size = 0.5))+
+    scale_x_continuous(breaks = seq(290, 337, by = 5), limits=c(290, 337))+
+    scale_y_continuous(breaks = seq(80, 92, by = 2), limits=c(80, 92))
 
 smallest %>%
     ggplot() +
     aes(x = player_weight, y = player_height) +
-    geom_point(size = (smallest$bigness*2.75)**5, alpha = 0.1) +
+    geom_point(size = (smallest$bigness*2.5)**5, alpha = 0.1) +
     geom_text(
     label=smallest$player_name,
     check_overlap = TRUE)+
     xlab("Player Weight (lbs)")+
     ylab("Player Height (in)")+
-    ggtitle("Smallest Players in the NBA")+
-    theme(plot.title = element_text(hjust = 0.5))
-
+    ggtitle("NBA's Smallest Players")+
+    theme(panel.background = element_rect(fill = "white", color = "white")) +
+    theme(panel.border = element_rect(color = "grey",fill = NA,size = .5)) +
+    theme(panel.grid = element_line(color = "grey",size = 0.5))+
+    scale_x_continuous(breaks = seq(132, 167, by = 5), limits=c(132, 167))+
+    scale_y_continuous(breaks = seq(63, 73, by = 2), limits=c(63, 73))
 ```
 
 
 ```{r}
-library(ggrepel)
-
 nba_data <- nba_data %>%
     mutate(rebounds = ((oreb_pct+0.00001)/mean(oreb_pct))*
         ((dreb_pct+0.00001)/mean(dreb_pct)))
-nba_data
 
 name_and_rebs <- nba_data %>%
     group_by(player_name) %>%
-    summarise(player_name, oreb_pct = oreb_pct, dreb_pct = dreb_pct, rebounds)
+    summarise(player_name, oreb_pct = oreb_pct, dreb_pct = dreb_pct, rebounds, gp)
 
-worst_reb <- aggregate(cbind(rebounds, oreb_pct, dreb_pct) ~ 
+best_reb <- aggregate(cbind(rebounds, oreb_pct, dreb_pct, gp) ~ 
                           player_name, data = name_and_rebs, FUN = mean, na.rm = TRUE) %>%
     arrange(rebounds) %>% 
-    head(10)
-worst_reb
-
-best_reb <- aggregate(cbind(rebounds, oreb_pct, dreb_pct) ~ 
-                          player_name, data = name_and_rebs, FUN = mean, na.rm = TRUE) %>%
-    arrange(rebounds) %>% 
-    tail(15)
-best_reb
+    filter(gp > 10) %>%
+    tail(10)
 
 best_reb %>%
     ggplot() +
     aes(x = dreb_pct, y = oreb_pct) +
-    geom_point() +
+    geom_point(size = 5, alpha = 0.5) +
     geom_text_repel(aes(label = best_reb$player_name), force = 50)+
     xlab("Average Defensive Rebounds Percentage")+
     ylab("Average Offensive Rebounds Percentage")+
-    ggtitle("Best Rebounders in the NBA")+
-    theme(plot.title = element_text(hjust = 0.5))
-
-worst_reb %>%
-    ggplot() +
-    aes(x = dreb_pct, y = oreb_pct) +
-    geom_point() +
-    geom_text_repel(aes(label = worst_reb$player_name), force = 25, max.overlaps=100)+
-    xlab("Average Defensive Rebounds Percentage")+
-    ylab("Average Offensive Rebounds Percentage")+
-    ggtitle("Worst Rebounders in the NBA")+
-    theme(plot.title = element_text(hjust = 0.5))
+    ggtitle(label = "Top 10 Defensive Players by Rebounds", 
+            subtitle = "At least 10 games played per season on average")+
+    theme(panel.background = element_rect(fill = "white", color = "white")) +
+    theme(panel.border = element_rect(color = "grey",fill = NA,size = .5)) +
+    theme(panel.grid = element_line(color = "grey",size = 0.5))+
+    scale_x_continuous(breaks = seq(0.175, 0.35, by = 0.05), limits=c(0.175, 0.35))+
+    scale_y_continuous(breaks = seq(0.1, 0.275, by = 0.05), limits=c(0.1, 0.275))
 ```
-
