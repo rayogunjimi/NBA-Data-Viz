@@ -1,0 +1,103 @@
+---
+title: "data_viz_project"
+author: "Claude Baluh"
+date: "3/10/2022"
+output: html_document
+---
+
+```{r libraries}
+library(tidyverse)
+library(mdsr)
+library(readr)
+library(dplyr)
+install.packages("reshape2")
+library(reshape2)
+library(ggrepel)
+```
+
+``` {r data_grab}
+nba_data <- read_csv("Desktop/Data Science/all_seasons.csv")
+View(nba_data)
+
+summary(nba_data)
+str(nba_data)
+nba_data
+```
+
+```{r assists, points, rebounds}
+nba_pts_ast_reb = subset(nba_data , select = c(reb, pts, ast, season))
+nba_pts_ast_reb
+
+
+
+
+nba_points_assists_rebounds <- rbind(points, rebounds, assists)
+nba_points_assists_rebounds
+points = nba_pts_ast_reb %>%
+    group_by(season) %>%
+    summarise(vars = "points",
+              value = sum(pts))
+points
+rebounds =nba_pts_ast_reb %>%
+    group_by(season) %>%
+    summarise(vars = "rebounds",
+                value = sum(reb))
+rebounds
+assists = nba_pts_ast_reb %>%
+    group_by(season) %>%
+    summarise(vars= "assists",
+                 value = sum(ast))
+assists
+
+
+plot_data <- bind_rows(rebounds, points , assists)
+plot_data
+plot_data <- plot_data %>%
+    group_by(variable) %>%
+    summarise(value = sum(value))
+
+
+```
+``` {r plot}
+
+ggplot(data = plot_data, aes(x = season, y = value, group = vars, color = vars)) + 
+    geom_line()  +
+    scale_y_continuous(breaks = seq(min(500), max(4500), by = 500))+
+    theme(axis.text.x = element_text(angle = 90)) +
+    labs(main = "Season", y = "Values", x = "Points, Rebounds, and Assists Over Time (1996-97 to 2019-20)") +
+    ggtitle("Points, Rebounds and Assists Over Time" , subtitle = "From the 1996-97 season to the 2019-20 season") +
+    theme(panel.border = element_rect(color = "grey",
+                                      fill = NA,
+                                      size = .5)) +
+    theme(panel.grid = element_blank()) +
+    theme(panel.background = element_rect(fill = "white", 
+                                          color = "white")) +
+    theme(panel.grid.major.y = element_line(size = 0.5, linetype = "solid", color = "azure2")) +
+    theme(legend.position = "right") +
+    scale_color_manual(name = "Legend", labels = c("Assists per Season", "Rebounds per Season","Points per Season"), values = c("navy", "orange", "red")) 
+
+
+
+
+```
+
+
+
+
+
+``` {r test}
+points_rebounds_assists = nba_data %>%
+    summarise_at(vars(pts),
+                 list(Points = sum)) %>%
+    group_by(season) %>%
+    summarise_at(vars(reb),
+                  list(Rebounds = sum)) %>%
+    group_by(season) %>%
+    summarise_at(vars(ast),
+                 list(Assists = sum)) %>%
+    group_by(season)
+
+points_rebounds_assists
+
+```
+
